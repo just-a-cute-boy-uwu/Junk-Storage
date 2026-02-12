@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
 import threading
 import time
 import numpy as np
@@ -9,19 +9,18 @@ import os
 import random
 import json
 from datetime import datetime
-from queue import Queue
 import traceback
 import sys
 import subprocess
 import platform
 import glob
 import shutil
-import tempfile
 import re
 
 _BUFFERED_LOGS = []
 _APP_INSTANCE = None
 _APP_LOCK = threading.Lock()
+
 
 def app_log(message, level="info"):
     global _BUFFERED_LOGS, _APP_INSTANCE
@@ -40,6 +39,7 @@ def app_log(message, level="info"):
         except Exception:
             pass
 
+
 try:
     import pytesseract
     OCR_AVAILABLE = True
@@ -48,6 +48,7 @@ except ImportError:
     app_log("Warning: pytesseract not installed. OCR antibot detection will not work.", "warning")
 
 send_lock = threading.Lock()
+
 COLORS = {
     'bg': "#0a0e27",
     'surface': '#1a1f3a',
@@ -64,11 +65,12 @@ COLORS = {
     'section_title': '#7dcfff'
 }
 
+
 class ModernButton(tk.Canvas):
     def __init__(self, parent, text, command, bg_color, width=140, height=45):
         try:
             parent_bg = parent.cget('bg')
-        except:
+        except Exception:
             parent_bg = COLORS['bg']
         super().__init__(parent, width=width, height=height, bg=parent_bg, highlightthickness=0)
         self.command = command
@@ -104,21 +106,23 @@ class ModernButton(tk.Canvas):
             shadow_offset = 1 if self.hover else 2
             if self.enabled:
                 self.create_text(text_x + 1, text_y + shadow_offset, text=self.text,
-                               fill=COLORS['text_dim'], font=('Segoe UI', 11, 'bold'))
+                                 fill=COLORS['text_dim'], font=('Segoe UI', 11, 'bold'))
             self.create_text(text_x, text_y + shadow_offset, text=self.text,
-                            fill=text_color, font=('Segoe UI', 11, 'bold'))
-        except:
+                             fill=text_color, font=('Segoe UI', 11, 'bold'))
+        except Exception:
             pass
 
     def create_rounded_rect(self, x1, y1, x2, y2, radius=10, **kwargs):
         try:
-            points = [x1+radius, y1, x1+radius, y1, x2-radius, y1, x2-radius, y1,
-                     x2, y1, x2, y1+radius, x2, y1+radius, x2, y2-radius,
-                     x2, y2-radius, x2, y2, x2-radius, y2, x2-radius, y2,
-                     x1+radius, y2, x1+radius, y2, x1, y2, x1, y2-radius,
-                     x1, y2-radius, x1, y1+radius, x1, y1+radius, x1, y1]
+            points = [
+                x1 + radius, y1, x1 + radius, y1, x2 - radius, y1, x2 - radius, y1,
+                x2, y1, x2, y1 + radius, x2, y1 + radius, x2, y2 - radius,
+                x2, y2 - radius, x2, y2, x2 - radius, y2, x2 - radius, y2,
+                x1 + radius, y2, x1 + radius, y2, x1, y2, x1, y2 - radius,
+                x1, y2 - radius, x1, y1 + radius, x1, y1 + radius, x1, y1
+            ]
             return self.create_polygon(points, smooth=True, **kwargs)
-        except:
+        except Exception:
             return None
 
     def create_gradient_rect(self, x1, y1, x2, y2, color1, color2, radius=10):
@@ -128,44 +132,37 @@ class ModernButton(tk.Canvas):
             step_size = height / gradient_steps
             for i in range(gradient_steps):
                 ratio = i / gradient_steps
-                r = int(int(color1[1:3], 16) * (1-ratio) + int(color2[1:3], 16) * ratio)
-                g = int(int(color1[3:5], 16) * (1-ratio) + int(color2[3:5], 16) * ratio)
-                b = int(int(color1[5:7], 16) * (1-ratio) + int(color2[5:7], 16) * ratio)
+                r = int(int(color1[1:3], 16) * (1 - ratio) + int(color2[1:3], 16) * ratio)
+                g = int(int(color1[3:5], 16) * (1 - ratio) + int(color2[3:5], 16) * ratio)
+                b = int(int(color1[5:7], 16) * (1 - ratio) + int(color2[5:7], 16) * ratio)
                 color = f'#{r:02x}{g:02x}{b:02x}'
                 if i == 0:
                     self.create_rounded_rect(x1, y1, x2, y1 + step_size * 2,
-                                          radius=radius, fill=color, outline='')
+                                             radius=radius, fill=color, outline='')
                 elif i == gradient_steps - 1:
                     self.create_rounded_rect(x1, y2 - step_size * 2, x2, y2,
-                                          radius=radius, fill=color2, outline='')
+                                             radius=radius, fill=color2, outline='')
                 else:
                     y_top = y1 + step_size * i
                     y_bottom = y1 + step_size * (i + 1)
-                    self.create_rectangle(x1, y_top, x2, y_bottom,
-                                       fill=color, outline='')
-        except:
+                    self.create_rectangle(x1, y_top, x2, y_bottom, fill=color, outline='')
+        except Exception:
             pass
 
     def lighten_color(self, color, amount=20):
         try:
             color = color.lstrip('#')
-            r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-            r = min(255, r + amount)
-            g = min(255, g + amount)
-            b = min(255, b + amount)
-            return f'#{r:02x}{g:02x}{b:02x}'
-        except:
+            r, g, b = tuple(int(color[i:i + 2], 16) for i in (0, 2, 4))
+            return f'#{min(255, r + amount):02x}{min(255, g + amount):02x}{min(255, b + amount):02x}'
+        except Exception:
             return color
 
     def darken_color(self, color, amount=30):
         try:
             color = color.lstrip('#')
-            r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-            r = max(0, r - amount)
-            g = max(0, g - amount)
-            b = max(0, b - amount)
-            return f'#{r:02x}{g:02x}{b:02x}'
-        except:
+            r, g, b = tuple(int(color[i:i + 2], 16) for i in (0, 2, 4))
+            return f'#{max(0, r - amount):02x}{max(0, g - amount):02x}{max(0, b - amount):02x}'
+        except Exception:
             return color
 
     def on_click(self, event):
@@ -184,6 +181,7 @@ class ModernButton(tk.Canvas):
         self.enabled = enabled
         self.draw_button()
 
+
 class CommandScheduler:
     def __init__(self):
         self.lock = threading.Lock()
@@ -194,11 +192,10 @@ class CommandScheduler:
     def can_send(self):
         with self.lock:
             current_time = time.time()
-            time_since_last = current_time - self.last_command_time
-            can_send = time_since_last >= self.min_gap
-            if can_send:
+            if time.time() - self.last_command_time >= self.min_gap:
                 self.last_command_time = current_time
-            return can_send
+                return True
+            return False
 
     def wait_for_slot(self, timeout=30):
         start_time = time.time()
@@ -212,9 +209,7 @@ class CommandScheduler:
         if not self.gui or not self.gui.random_enabled.get():
             return base_delay
         variance = self.gui.command_variance.get()
-        min_delay = base_delay * (1 - variance)
-        max_delay = base_delay * (1 + variance)
-        return random.uniform(min_delay, max_delay)
+        return random.uniform(base_delay * (1 - variance), base_delay * (1 + variance))
 
     def humanize_typing(self, text):
         if not self.gui or not self.gui.random_enabled.get():
@@ -223,12 +218,12 @@ class CommandScheduler:
                     subprocess.run(['xdotool', 'type', '--', text], check=True)
                 else:
                     pyautogui.write(text)
-                time.sleep(0.3)
             except Exception as e:
                 app_log(f"Typing error: {e}", "warning")
                 pyautogui.write(text)
-                time.sleep(0.3)
+            time.sleep(0.3)
             return
+
         try:
             if platform.system() == 'Linux':
                 for char in text:
@@ -248,11 +243,12 @@ class CommandScheduler:
         except Exception as e:
             app_log(f"Humanized typing error: {e}", "error")
             pyautogui.write(text)
-        pause = random.uniform(
+
+        time.sleep(random.uniform(
             self.gui.typing_pause_min.get(),
             self.gui.typing_pause_max.get()
-        )
-        time.sleep(pause)
+        ))
+
 
 class FloatingControlPanel:
     def __init__(self, parent_gui, root):
@@ -270,26 +266,25 @@ class FloatingControlPanel:
         self.root.minsize(300, 400)
 
         main_frame = tk.Frame(self.root, bg=COLORS['surface'],
-                             highlightbackground=COLORS['border'],
-                             highlightthickness=1)
+                              highlightbackground=COLORS['border'],
+                              highlightthickness=1)
         main_frame.pack(fill='both', expand=True, padx=2, pady=2)
 
-        title = tk.Label(main_frame, text="Project Promohomo",
-                        font=('Segoe UI', 14, 'bold'),
-                        bg=COLORS['surface'], fg=COLORS['primary'])
-        title.pack(pady=(10, 5))
+        tk.Label(main_frame, text="Project Promohomo",
+                 font=('Segoe UI', 14, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['primary']).pack(pady=(10, 5))
 
         status_frame = tk.Frame(main_frame, bg=COLORS['surface'])
         status_frame.pack(fill='x', padx=15, pady=(5, 10))
 
         tk.Label(status_frame, text="Status:",
-                font=('Segoe UI', 9, 'bold'),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w')
+                 font=('Segoe UI', 9, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w')
 
         self.status_indicator = tk.Label(status_frame, text="Stopped",
-                                        font=('Segoe UI', 11, 'bold'),
-                                        bg=COLORS['surface'],
-                                        fg=COLORS['danger'])
+                                         font=('Segoe UI', 11, 'bold'),
+                                         bg=COLORS['surface'],
+                                         fg=COLORS['danger'])
         self.status_indicator.pack(anchor='w', pady=(2, 0))
 
         btn_frame = tk.Frame(main_frame, bg=COLORS['surface'])
@@ -312,42 +307,49 @@ class FloatingControlPanel:
         self.stop_btn.set_enabled(False)
         self.stop_btn.pack(side='left', padx=5)
 
-        settings_btn = ModernButton(main_frame, "Settings",
-                                   self.open_settings, COLORS['accent'],
-                                   width=360, height=32)
-        settings_btn.pack(pady=(0, 10), padx=15)
+        ModernButton(main_frame, "Settings",
+                     self.open_settings, COLORS['accent'],
+                     width=360, height=32).pack(pady=(0, 10), padx=15)
 
         log_header = tk.Frame(main_frame, bg=COLORS['surface'])
         log_header.pack(fill='x', padx=15, pady=(10, 5))
         tk.Label(log_header, text="Activity Log",
-                font=('Segoe UI', 10, 'bold'),
-                bg=COLORS['surface'], fg=COLORS['section_title']).pack(anchor='w')
+                 font=('Segoe UI', 10, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['section_title']).pack(anchor='w')
 
         log_container = tk.Frame(main_frame, bg=COLORS['surface'])
         log_container.pack(fill='both', expand=True, padx=15, pady=(0, 10))
 
         self.log_text = tk.Text(log_container,
-                               font=('Consolas', 8),
-                               bg=COLORS['surface_light'],
-                               fg=COLORS['text'],
-                               bd=0, relief='flat',
-                               wrap='word',
-                               height=10,
-                               padx=5, pady=5,
-                               insertbackground=COLORS['text'],
-                               selectbackground=COLORS['primary'],
-                               selectforeground=COLORS['text'])
+                                font=('Consolas', 8),
+                                bg=COLORS['surface_light'],
+                                fg=COLORS['text'],
+                                bd=0, relief='flat',
+                                wrap='word',
+                                height=10,
+                                padx=5, pady=5,
+                                insertbackground=COLORS['text'],
+                                selectbackground=COLORS['primary'],
+                                selectforeground=COLORS['text'])
 
         log_scrollbar = tk.Scrollbar(log_container,
-                                command=self.log_text.yview,
-                                bg=COLORS['surface_light'],
-                                troughcolor=COLORS['surface'],
-                                bd=0, width=10)
+                                     command=self.log_text.yview,
+                                     bg=COLORS['surface_light'],
+                                     troughcolor=COLORS['surface'],
+                                     bd=0, width=10)
 
         self.log_text.configure(yscrollcommand=log_scrollbar.set)
         self.log_text.config(state='disabled')
         self.log_text.pack(side='left', fill='both', expand=True)
         log_scrollbar.pack(side='right', fill='y')
+
+        # Configure log text tags once at setup
+        self.log_text.tag_config('timestamp', foreground=COLORS['text_dim'])
+        self.log_text.tag_config('info', foreground=COLORS['text'])
+        self.log_text.tag_config('success', foreground=COLORS['success'])
+        self.log_text.tag_config('warning', foreground=COLORS['warning'])
+        self.log_text.tag_config('error', foreground=COLORS['danger'])
+        self.log_text.tag_config('command', foreground=COLORS['primary'])
 
     def open_settings(self):
         if self.settings_window and self.settings_window.root.winfo_exists():
@@ -358,7 +360,7 @@ class FloatingControlPanel:
     def update_status(self, status_text, status_color):
         try:
             self.status_indicator.config(text=status_text, fg=status_color)
-        except:
+        except Exception:
             pass
 
     def add_log(self, message, level="info"):
@@ -366,32 +368,20 @@ class FloatingControlPanel:
             try:
                 if not self.log_text.winfo_exists():
                     return
-
                 timestamp = datetime.now().strftime("%H:%M:%S")
-                colors = {
-                    "info": COLORS['text'],
-                    "success": COLORS['success'],
-                    "warning": COLORS['warning'],
-                    "error": COLORS['danger'],
-                    "command": COLORS['primary']
-                }
-
-                self.log_text.tag_config('timestamp', foreground=COLORS['text_dim'])
-                for tag, color in colors.items():
-                    self.log_text.tag_config(tag, foreground=color)
-
                 self.log_text.config(state='normal')
                 self.log_text.insert('end', f"[{timestamp}] ", ('timestamp',))
                 self.log_text.insert('end', f"{message}\n", (level,))
                 self.log_text.see('end')
                 self.log_text.config(state='disabled')
-            except:
+            except Exception:
                 pass
 
         try:
             self.root.after(0, _add_to_log)
-        except:
+        except Exception:
             pass
+
 
 class SettingsWindow:
     def __init__(self, parent_gui, parent_root):
@@ -407,84 +397,82 @@ class SettingsWindow:
     def create_themed_frame(self, parent, style='normal'):
         try:
             if style == 'section':
-                frame = tk.Frame(parent, bg=COLORS['surface'],
+                return tk.Frame(parent, bg=COLORS['surface'],
                                 highlightbackground=COLORS['border'],
                                 highlightthickness=1)
             elif style == 'surface':
-                frame = tk.Frame(parent, bg=COLORS['surface'])
+                return tk.Frame(parent, bg=COLORS['surface'])
             elif style == 'input':
-                frame = tk.Frame(parent, bg=COLORS['surface_light'])
+                return tk.Frame(parent, bg=COLORS['surface_light'])
             else:
-                frame = tk.Frame(parent, bg=COLORS['bg'])
-            return frame
-        except:
+                return tk.Frame(parent, bg=COLORS['bg'])
+        except Exception:
             return tk.Frame(parent, bg=COLORS['bg'])
 
     def setup_ui(self):
         main_container = tk.Frame(self.root, bg=COLORS['bg'])
         main_container.pack(fill='both', expand=True, padx=15, pady=15)
 
-        title = tk.Label(main_container, text="Settings",
-                        font=('Segoe UI', 20, 'bold'),
-                        bg=COLORS['bg'], fg=COLORS['primary'])
-        title.pack(pady=(0, 20))
+        tk.Label(main_container, text="Settings",
+                 font=('Segoe UI', 20, 'bold'),
+                 bg=COLORS['bg'], fg=COLORS['primary']).pack(pady=(0, 20))
 
         canvas = tk.Canvas(main_container, bg=COLORS['bg'], highlightthickness=0)
         scrollbar = tk.Scrollbar(main_container, orient="vertical", command=canvas.yview,
-                                bg=COLORS['surface_light'], troughcolor=COLORS['surface'],
-                                bd=0, width=12)
+                                 bg=COLORS['surface_light'], troughcolor=COLORS['surface'],
+                                 bd=0, width=12)
         scrollable_frame = tk.Frame(canvas, bg=COLORS['bg'])
         scrollable_frame.bind("<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+                              lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.bind("<Configure>", lambda e: canvas.itemconfig(window_id, width=e.width))
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # Anti-Bot Image section
         img_frame = self.create_themed_frame(scrollable_frame, 'section')
         img_frame.pack(fill='x', pady=(0, 15), padx=0)
 
-        section_title = tk.Label(img_frame, text="Anti-Bot Image",
-                          font=('Segoe UI', 11, 'bold'),
-                          bg=COLORS['surface'], fg=COLORS['section_title'])
-        section_title.pack(anchor='w', padx=15, pady=(10, 5))
+        tk.Label(img_frame, text="Anti-Bot Image",
+                 font=('Segoe UI', 11, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['section_title']).pack(anchor='w', padx=15, pady=(10, 5))
 
         self.image_label = tk.Label(img_frame, text="No image selected",
-                                  font=('Segoe UI', 9),
-                                  bg=COLORS['surface_light'],
-                                  fg=COLORS['text_dim'],
-                                  anchor='w', padx=12, pady=8,
-                                  wraplength=400)
+                                    font=('Segoe UI', 9),
+                                    bg=COLORS['surface_light'],
+                                    fg=COLORS['text_dim'],
+                                    anchor='w', padx=12, pady=8,
+                                    wraplength=400)
         self.image_label.pack(fill='x', padx=15, pady=(0, 8))
 
-        browse_btn = ModernButton(img_frame, "Browse",
-                                lambda: self.parent_gui.select_image(self.update_image_label),
-                                COLORS['primary'],
-                                width=100, height=32)
-        browse_btn.pack(anchor='e', padx=15, pady=(0, 10))
+        ModernButton(img_frame, "Browse",
+                     lambda: self.parent_gui.select_image(self.update_image_label),
+                     COLORS['primary'],
+                     width=100, height=32).pack(anchor='e', padx=15, pady=(0, 10))
 
+        # Window Name section
         win_frame = self.create_themed_frame(scrollable_frame, 'section')
         win_frame.pack(fill='x', padx=0, pady=(0, 15))
 
         tk.Label(win_frame, text="Window Name:",
-                font=('Segoe UI', 10, 'bold'),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
+                 font=('Segoe UI', 10, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
 
-        window_entry = tk.Entry(win_frame, textvariable=self.parent_gui.window_name,
-                               font=('Segoe UI', 10),
-                               bg=COLORS['surface_light'],
-                               fg=COLORS['text'],
-                               bd=0, insertbackground=COLORS['text'],
-                               relief='flat')
-        window_entry.pack(fill='x', padx=15, pady=(0, 10))
+        tk.Entry(win_frame, textvariable=self.parent_gui.window_name,
+                 font=('Segoe UI', 10),
+                 bg=COLORS['surface_light'],
+                 fg=COLORS['text'],
+                 bd=0, insertbackground=COLORS['text'],
+                 relief='flat').pack(fill='x', padx=15, pady=(0, 10))
 
+        # Command Cooldowns section
         timing_frame = self.create_themed_frame(scrollable_frame, 'section')
         timing_frame.pack(fill='x', pady=(0, 15), padx=0)
 
         tk.Label(timing_frame, text="Command Cooldowns (seconds)",
-                font=('Segoe UI', 10, 'bold'),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
+                 font=('Segoe UI', 10, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
 
         self.create_cooldown_control(timing_frame, "owo buy Command:",
                                      self.parent_gui.owobuy_cooldown, 1.0, 30.0)
@@ -493,87 +481,65 @@ class SettingsWindow:
         self.create_cooldown_control(timing_frame, "owoh/owob Commands:",
                                      self.parent_gui.owoh_owob_cooldown, 1.0, 60.0)
 
+        # Command Options section
         toggles_frame = self.create_themed_frame(scrollable_frame, 'section')
         toggles_frame.pack(fill='x', pady=(0, 15), padx=0)
 
         tk.Label(toggles_frame, text="Command Options",
-                font=('Segoe UI', 10, 'bold'),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
+                 font=('Segoe UI', 10, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
 
-        owobuy_toggle = tk.Frame(toggles_frame, bg=COLORS['surface'])
-        owobuy_toggle.pack(fill='x', padx=15, pady=(0, 10))
-        tk.Label(owobuy_toggle, text="Enable owo buy Command:",
-                font=('Segoe UI', 9),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
-        tk.Checkbutton(owobuy_toggle, variable=self.parent_gui.owobuy_enabled,
-                      bg=COLORS['surface'], fg=COLORS['text'],
-                      activebackground=COLORS['surface'],
-                      selectcolor=COLORS['surface_light']).pack(side='left', padx=10)
+        self._add_toggle(toggles_frame, "Enable owo buy Command:", self.parent_gui.owobuy_enabled)
+        self._add_toggle(toggles_frame, "Enable owo Command:", self.parent_gui.owo_enabled)
+        self._add_toggle(toggles_frame, "Use /hunt & /battle instead of owoh/owob:",
+                         self.parent_gui.use_slash_hunt_battle)
 
-        owo_toggle = tk.Frame(toggles_frame, bg=COLORS['surface'])
-        owo_toggle.pack(fill='x', padx=15, pady=(0, 10))
-        tk.Label(owo_toggle, text="Enable owo Command:",
-                font=('Segoe UI', 9),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
-        tk.Checkbutton(owo_toggle, variable=self.parent_gui.owo_enabled,
-                      bg=COLORS['surface'], fg=COLORS['text'],
-                      activebackground=COLORS['surface'],
-                      selectcolor=COLORS['surface_light']).pack(side='left', padx=10)
-
-        hb_toggle = tk.Frame(toggles_frame, bg=COLORS['surface'])
-        hb_toggle.pack(fill='x', padx=15, pady=(0, 10))
-        tk.Label(hb_toggle, text="Use /hunt & /battle instead of owoh/owob:",
-                font=('Segoe UI', 9),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
-        tk.Checkbutton(hb_toggle, variable=self.parent_gui.use_slash_hunt_battle,
-                      bg=COLORS['surface'], fg=COLORS['text'],
-                      activebackground=COLORS['surface'],
-                      selectcolor=COLORS['surface_light']).pack(side='left', padx=10)
-
+        # Randomization section
         random_frame = self.create_themed_frame(scrollable_frame, 'section')
         random_frame.pack(fill='x', pady=(0, 15), padx=0)
 
         tk.Label(random_frame, text="Randomization Settings",
-                font=('Segoe UI', 10, 'bold'),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
+                 font=('Segoe UI', 10, 'bold'),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(anchor='w', padx=15, pady=(10, 5))
 
-        random_toggle = tk.Frame(random_frame, bg=COLORS['surface'])
-        random_toggle.pack(fill='x', padx=15, pady=(0, 10))
-        tk.Label(random_toggle, text="Enable Randomization:",
-                font=('Segoe UI', 9),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
-        tk.Checkbutton(random_toggle, variable=self.parent_gui.random_enabled,
-                      bg=COLORS['surface'], fg=COLORS['text'],
-                      activebackground=COLORS['surface'],
-                      selectcolor=COLORS['surface_light']).pack(side='left', padx=10)
+        self._add_toggle(random_frame, "Enable Randomization:", self.parent_gui.random_enabled)
 
-        self.create_cooldown_control(random_frame,
-                                   "Command Timing Variance (%):",
-                                   self.parent_gui.command_variance, 0.0, 0.5,
-                                   value_format=lambda x: f"{int(x * 100)}%")
-        self.create_cooldown_control(random_frame,
-                                   "Min Typing Delay (ms):",
-                                   self.parent_gui.typing_delay_min, 0.01, 0.1,
-                                   resolution=0.01,
-                                   value_format=lambda x: f"{int(x * 1000)}ms")
-        self.create_cooldown_control(random_frame,
-                                   "Max Typing Delay (ms):",
-                                   self.parent_gui.typing_delay_max, 0.02, 0.2,
-                                   resolution=0.01,
-                                   value_format=lambda x: f"{int(x * 1000)}ms")
-        self.create_cooldown_control(random_frame,
-                                   "Min Post-Typing Pause (ms):",
-                                   self.parent_gui.typing_pause_min, 0.1, 1.0,
-                                   resolution=0.1,
-                                   value_format=lambda x: f"{int(x * 1000)}ms")
-        self.create_cooldown_control(random_frame,
-                                   "Max Post-Typing Pause (ms):",
-                                   self.parent_gui.typing_pause_max, 0.2, 1.5,
-                                   resolution=0.1,
-                                   value_format=lambda x: f"{int(x * 1000)}ms")
+        self.create_cooldown_control(random_frame, "Command Timing Variance (%):",
+                                     self.parent_gui.command_variance, 0.0, 0.5,
+                                     value_format=lambda x: f"{int(x * 100)}%")
+        self.create_cooldown_control(random_frame, "Min Typing Delay (ms):",
+                                     self.parent_gui.typing_delay_min, 0.01, 0.1,
+                                     resolution=0.01,
+                                     value_format=lambda x: f"{int(x * 1000)}ms")
+        self.create_cooldown_control(random_frame, "Max Typing Delay (ms):",
+                                     self.parent_gui.typing_delay_max, 0.02, 0.2,
+                                     resolution=0.01,
+                                     value_format=lambda x: f"{int(x * 1000)}ms")
+        self.create_cooldown_control(random_frame, "Min Post-Typing Pause (ms):",
+                                     self.parent_gui.typing_pause_min, 0.1, 1.0,
+                                     resolution=0.1,
+                                     value_format=lambda x: f"{int(x * 1000)}ms")
+        self.create_cooldown_control(random_frame, "Max Post-Typing Pause (ms):",
+                                     self.parent_gui.typing_pause_max, 0.2, 1.5,
+                                     resolution=0.1,
+                                     value_format=lambda x: f"{int(x * 1000)}ms")
+
+    def _add_toggle(self, parent, label_text, variable):
+        """Helper to create a labelled checkbox row."""
+        row = tk.Frame(parent, bg=COLORS['surface'])
+        row.pack(fill='x', padx=15, pady=(0, 10))
+        tk.Label(row, text=label_text, font=('Segoe UI', 9),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
+        tk.Checkbutton(row, variable=variable,
+                       bg=COLORS['surface'], fg=COLORS['text'],
+                       activebackground=COLORS['surface'],
+                       selectcolor=COLORS['surface_light']).pack(side='left', padx=10)
 
     def create_cooldown_control(self, parent, label_text, variable, min_val, max_val,
-                               resolution=0.5, value_format=None):
+                                resolution=0.5, value_format=None):
+        if value_format is None:
+            value_format = lambda x: f"{x:.1f}s"
+
         frame = self.create_themed_frame(parent, 'surface')
         frame.pack(fill='x', padx=15, pady=(0, 10))
 
@@ -581,32 +547,28 @@ class SettingsWindow:
         label_container.pack(fill='x')
 
         tk.Label(label_container, text=label_text,
-                font=('Segoe UI', 9),
-                bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
-
-        if value_format is None:
-            value_format = lambda x: f"{x:.1f}s"
+                 font=('Segoe UI', 9),
+                 bg=COLORS['surface'], fg=COLORS['text']).pack(side='left')
 
         value_label = tk.Label(label_container, text=value_format(variable.get()),
-                              font=('Segoe UI', 9, 'bold'),
-                              bg=COLORS['surface'], fg=COLORS['primary'])
+                               font=('Segoe UI', 9, 'bold'),
+                               bg=COLORS['surface'], fg=COLORS['primary'])
         value_label.pack(side='right')
 
-        scale = tk.Scale(frame, from_=min_val, to=max_val,
-                        resolution=resolution,
-                        orient='horizontal',
-                        variable=variable,
-                        bg=COLORS['surface_light'],
-                        fg=COLORS['text'],
-                        troughcolor=COLORS['surface'],
-                        activebackground=COLORS['primary'],
-                        highlightthickness=0,
-                        bd=0,
-                        font=('Segoe UI', 8),
-                        showvalue=False,
-                        length=600,
-                        digits=3)
-        scale.pack(fill='x', pady=(5, 0))
+        tk.Scale(frame, from_=min_val, to=max_val,
+                 resolution=resolution,
+                 orient='horizontal',
+                 variable=variable,
+                 bg=COLORS['surface_light'],
+                 fg=COLORS['text'],
+                 troughcolor=COLORS['surface'],
+                 activebackground=COLORS['primary'],
+                 highlightthickness=0,
+                 bd=0,
+                 font=('Segoe UI', 8),
+                 showvalue=False,
+                 length=600,
+                 digits=3).pack(fill='x', pady=(5, 0))
 
         def update_label(*args):
             if not value_label.winfo_exists():
@@ -618,7 +580,7 @@ class SettingsWindow:
                 elif current_value > max_val:
                     variable.set(max_val)
                 value_label.config(text=value_format(variable.get()))
-            except:
+            except Exception:
                 pass
 
         variable.trace_add('write', update_label)
@@ -631,38 +593,43 @@ class SettingsWindow:
         else:
             self.image_label.config(text="No image selected", fg=COLORS['text_dim'])
 
+
 class MacroGUI:
+    SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.json")
+
     def __init__(self, root):
         self.root = root
 
         self.screenshot_lock = threading.Lock()
-        self.screenshot_dir = os.path.join(os.path.dirname(__file__), "screenshots")
+        self.screenshot_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots")
         os.makedirs(self.screenshot_dir, exist_ok=True)
 
+        # Tkinter variables
         self.owobuy_cooldown = tk.DoubleVar(root, value=5.0)
-        self.owo_enabled = tk.BooleanVar(root, value=True)
-        self.use_slash_hunt_battle = tk.BooleanVar(root, value=False)
+        self.owobuy_enabled = tk.BooleanVar(root, value=True)
         self.owo_cooldown = tk.DoubleVar(root, value=10.0)
+        self.owo_enabled = tk.BooleanVar(root, value=True)
         self.owoh_owob_cooldown = tk.DoubleVar(root, value=15.0)
+        self.use_slash_hunt_battle = tk.BooleanVar(root, value=False)
         self.command_variance = tk.DoubleVar(root, value=0.15)
         self.typing_delay_min = tk.DoubleVar(root, value=0.01)
         self.typing_delay_max = tk.DoubleVar(root, value=0.05)
         self.typing_pause_min = tk.DoubleVar(root, value=0.2)
         self.typing_pause_max = tk.DoubleVar(root, value=0.5)
         self.random_enabled = tk.BooleanVar(root, value=True)
-        self.owobuy_enabled = tk.BooleanVar(root, value=True)
         self.window_name = tk.StringVar(root, value="Discord")
 
+        # Runtime state
         self.running = False
         self.paused = False
         self.pause_lock = threading.RLock()
-
         self.start_lock = threading.Lock()
-        self.countdown_thread = None
-
+        self.stop_event = threading.Event()
         self.threads = []
+        self.countdown_thread = None
         self.image_path = ""
 
+        # Statistics
         self.lifetime_stats = {
             'commands_sent': 0,
             'owobuy': 0,
@@ -672,7 +639,6 @@ class MacroGUI:
             'antibot_detections': 0
         }
         self.stats = {
-            'cycles': 0,
             'commands_sent': 0,
             'start_time': None,
             'owobuy': 0,
@@ -700,12 +666,11 @@ class MacroGUI:
 
         self.scheduler = CommandScheduler()
         self.scheduler.gui = self
-        self.stop_event = threading.Event()
 
         try:
             pyautogui.FAILSAFE = False
             pyautogui.PAUSE = 0.1
-            _ = pyautogui.position()
+            pyautogui.position()  # Verify pyautogui is functional
             self.log("PyAutoGUI initialized successfully", "info")
         except Exception as e:
             self.log(f"PyAutoGUI initialization warning: {e}", "warning")
@@ -714,17 +679,16 @@ class MacroGUI:
             self.log("OCR antibot detection enabled", "success")
         else:
             self.log("OCR not available - using image matching fallback", "warning")
-        
+
         self.log(f"Screenshots will be saved to: {self.screenshot_dir}", "info")
 
     def log(self, message, level="info"):
         timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] {message}")
-
         if hasattr(self, 'control_panel'):
             try:
                 self.control_panel.add_log(message, level)
-            except:
+            except Exception:
                 pass
 
     def select_image(self, callback=None):
@@ -747,14 +711,20 @@ class MacroGUI:
                 self.control_panel.update_status("Paused", COLORS['warning'])
                 self.log("Macro paused", "warning")
             else:
-                self.control_panel.update_status("Running", COLORS['success'])
-                self.log("Resuming in 3 seconds...", "warning")
-                for i in range(3, 0, -1):
-                    if not self.running:
-                        return
-                    self.log(f"{i}...", "warning")
-                    time.sleep(1)
-                self.log("Macro resumed", "success")
+                # Run resume countdown in a separate thread to avoid blocking the GUI
+                threading.Thread(target=self._resume_countdown, daemon=True).start()
+
+    def _resume_countdown(self):
+        self.control_panel.update_status("Resuming in 3 seconds...", COLORS['warning'])
+        self.log("Resuming in 3 seconds...", "warning")
+        for i in range(3, 0, -1):
+            if not self.running:
+                return
+            self.log(f"{i}...", "warning")
+            time.sleep(1)
+        if self.running:
+            self.control_panel.update_status("Running", COLORS['success'])
+            self.log("Macro resumed", "success")
 
     def start_macro(self):
         if not self.image_path or not os.path.exists(self.image_path):
@@ -797,18 +767,22 @@ class MacroGUI:
         if not self.running or self.stop_event.is_set():
             self.log("Start cancelled after countdown", "warning")
             return
+
         for thread in self.threads:
             if thread.is_alive():
                 self.log("Warning: Old thread still running, waiting...", "warning")
         self.threads = []
+
+        if self.owobuy_enabled.get():
+            self.threads.append(threading.Thread(target=self.owobuy_loop, name="owobuy-thread", daemon=True))
         if self.owo_enabled.get():
             self.threads.append(threading.Thread(target=self.owo_loop, name="owo-thread", daemon=True))
         self.threads.append(threading.Thread(target=self.owoh_owob_loop, name="owoh-owob-thread", daemon=True))
-        if self.owobuy_enabled.get():
-            self.threads.insert(0, threading.Thread(target=self.owobuy_loop, name="owobuy-thread", daemon=True))
+
         if not self.running or self.stop_event.is_set():
             self.log("Start cancelled before thread launch", "warning")
             return
+
         for thread in self.threads:
             thread.start()
         self.log("All command threads started", "success")
@@ -817,17 +791,18 @@ class MacroGUI:
         self.running = False
         self.stop_event.set()
         self.paused = False
+
+        # Clean up leftover screenshot files
         try:
-            # Clean up screenshots in local directory
-            for pattern in ['macro_screenshot_*', 'antibot_ss.png']:
+            for pattern in ['temp_screenshot_*', 'macro_screenshot_*', 'antibot_ss.png']:
                 for f in glob.glob(os.path.join(self.screenshot_dir, pattern)):
                     try:
-                        if os.path.exists(f):
-                            os.remove(f)
+                        os.remove(f)
                     except Exception:
                         pass
         except Exception:
             pass
+
         self.log("Stopping macro... waiting for threads to exit.", "warning")
         self.control_panel.start_btn.set_enabled(True)
         self.control_panel.pause_btn.set_enabled(False)
@@ -842,8 +817,10 @@ class MacroGUI:
 
     def is_correct_window_active(self):
         try:
-            cmd = ["xdotool", "getactivewindow", "getwindowname"]
-            window_name = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode().strip()
+            window_name = subprocess.check_output(
+                ["xdotool", "getactivewindow", "getwindowname"],
+                stderr=subprocess.DEVNULL
+            ).decode().strip()
             target = self.window_name.get().lower().strip()
             if not target:
                 return True
@@ -854,29 +831,27 @@ class MacroGUI:
     def capture_screenshot(self, max_total_wait=10.0, retry_delay=0.5):
         with self.screenshot_lock:
             start_time = time.time()
-    
             while time.time() - start_time < max_total_wait:
                 try:
                     prefix = f"temp_screenshot_{int(time.time())}"
                     base_path = os.path.join(self.screenshot_dir, prefix + ".png")
                     pattern = os.path.join(self.screenshot_dir, prefix + "*.png")
-    
+
                     subprocess.run(
                         ["scrot", base_path],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                         timeout=2,
                     )
-    
+
                     matches = glob.glob(pattern)
                     if matches:
                         latest = max(matches, key=os.path.getmtime)
-    
                         img = Image.open(latest)
                         img_copy = img.copy()
                         img.close()
-    
-                        # Cleanup — race-safe
+
+                        # Race-safe cleanup
                         for f in matches:
                             try:
                                 os.remove(f)
@@ -884,38 +859,30 @@ class MacroGUI:
                                 pass
                             except Exception as e:
                                 self.log(f"Screenshot cleanup warning: {e}", "warning")
-    
+
                         return img_copy
-    
                 except Exception:
                     pass
-                
+
                 time.sleep(retry_delay)
-    
-            self.log(
-                f"Screenshot unavailable after {max_total_wait}s, will retry later.",
-                "warning",
-            )
+
+            self.log(f"Screenshot unavailable after {max_total_wait}s, will retry later.", "warning")
             return None
 
-
     def detect_antibot(self):
-        use_ocr = OCR_AVAILABLE
-        if use_ocr:
+        if OCR_AVAILABLE:
             return self.detect_antibot_ocr()
-        else:
-            return self.detect_antibot_image()
+        return self.detect_antibot_image()
 
     def detect_antibot_ocr(self):
         try:
             screenshot = self.capture_screenshot()
             if screenshot is None:
                 return False
-            
-            screenshot_gray = screenshot.convert('L')
-            text = pytesseract.image_to_string(screenshot_gray, lang='eng')
+
+            text = pytesseract.image_to_string(screenshot.convert('L'), lang='eng')
             text_normalized = re.sub(r'\s+', ' ', text.lower().strip())
-            
+
             antibot_patterns = [
                 r'\bare\s+you\s+a\s+real\s+human\b',
                 r'\bplease\s+use\s+the\s+link\s+below\b',
@@ -923,20 +890,13 @@ class MacroGUI:
                 r'https?://owobot\.com/captcha',
                 r'\bplease\s+complete\s+your\s+captcha\s+to\s+verify\b'
             ]
-            
-            found = False
-            matched_pattern = None
+
             for pattern in antibot_patterns:
                 if re.search(pattern, text_normalized):
-                    found = True
-                    matched_pattern = pattern
-                    break
-            
-            if found:
-                self.stats['antibot_detections'] += 1
-                self.lifetime_stats['antibot_detections'] += 1
-                self.log(f"⚠ Anti-bot detected (OCR found: '{matched_pattern}')! Pausing macro.", "warning")
-                return True
+                    self.stats['antibot_detections'] += 1
+                    self.lifetime_stats['antibot_detections'] += 1
+                    self.log(f"⚠ Anti-bot detected (OCR found: '{pattern}')! Pausing macro.", "warning")
+                    return True
             return False
         except Exception as e:
             self.log(f"Error in OCR anti-bot detection: {e}", "error")
@@ -950,45 +910,30 @@ class MacroGUI:
             screenshot = self.capture_screenshot()
             if screenshot is None:
                 return False
-            
+
             template = Image.open(self.image_path)
             screen_array = np.array(screenshot)
             template_array = np.array(template)
             screen_h, screen_w = screen_array.shape[:2]
             template_h, template_w = template_array.shape[:2]
-            found = False
-            best_similarity = 0
-            
+
             for scale in [0.8, 0.9, 1.0, 1.1, 1.2]:
                 new_w = int(template_w * scale)
                 new_h = int(template_h * scale)
                 if new_w > screen_w or new_h > screen_h or new_w < 10 or new_h < 10:
                     continue
-                resized_template = template.resize((new_w, new_h), Image.LANCZOS)
-                template_resized_array = np.array(resized_template)
-                step = 30
-                margin = 50
+                resized_template = np.array(template.resize((new_w, new_h), Image.LANCZOS))
+                step, margin = 30, 50
                 for y in range(margin, screen_h - new_h - margin, step):
                     for x in range(margin, screen_w - new_w - margin, step):
-                        region = screen_array[y:y+new_h, x:x+new_w]
-                        if region.shape == template_resized_array.shape:
-                            diff = np.abs(region.astype(float) - template_resized_array.astype(float))
-                            similarity = 1.0 - (np.mean(diff) / 255.0)
-                            if similarity > best_similarity:
-                                best_similarity = similarity
+                        region = screen_array[y:y + new_h, x:x + new_w]
+                        if region.shape == resized_template.shape:
+                            similarity = 1.0 - (np.mean(np.abs(region.astype(float) - resized_template.astype(float))) / 255.0)
                             if similarity > 0.80:
-                                found = True
-                                break
-                    if found:
-                        break
-                if found:
-                    break
-            
-            if found:
-                self.stats['antibot_detections'] += 1
-                self.lifetime_stats['antibot_detections'] += 1
-                self.log("⚠ Anti-bot popup detected! Pausing macro.", "warning")
-                return True
+                                self.stats['antibot_detections'] += 1
+                                self.lifetime_stats['antibot_detections'] += 1
+                                self.log("⚠ Anti-bot popup detected! Pausing macro.", "warning")
+                                return True
             return False
         except Exception as e:
             self.log(f"Error in anti-bot detection: {e}", "error")
@@ -998,6 +943,34 @@ class MacroGUI:
     def wait_if_paused(self):
         with self.pause_lock:
             return not self.paused
+
+    def _wait_for_ready(self, tag=""):
+        """Block until the macro is ready to send a command.
+        Returns True when ready, False if the loop should terminate."""
+        while self.running and not self.stop_event.is_set():
+            if not self.wait_if_paused():
+                time.sleep(0.1)
+                continue
+            if not self.is_correct_window_active():
+                if tag:
+                    self.log(f"[{tag}] Target window not active; waiting...", "warning")
+                while self.running and not self.stop_event.is_set() and not self.is_correct_window_active():
+                    time.sleep(0.5)
+                continue
+            if self.detect_antibot():
+                with self.pause_lock:
+                    self.paused = True
+                time.sleep(1)
+                continue
+            return True
+        return False
+
+    def _interruptible_sleep(self, delay):
+        """Sleep for `delay` seconds, aborting early if the macro stops."""
+        for _ in range(int(delay * 10)):
+            if not self.running or self.stop_event.is_set():
+                break
+            time.sleep(0.1)
 
     def send_command(self, text, command_type):
         if not self.running:
@@ -1013,8 +986,8 @@ class MacroGUI:
             with self.pause_lock:
                 self.paused = True
             return False
-        acquired = send_lock.acquire(timeout=5)
-        if not acquired:
+
+        if not send_lock.acquire(timeout=5):
             self.log(f"[{command_type}] Failed to acquire send lock", "warning")
             return False
         try:
@@ -1026,9 +999,7 @@ class MacroGUI:
                 return False
 
             self.scheduler.humanize_typing(text)
-
-            final_pause = random.uniform(0.3, 0.5)
-            time.sleep(final_pause)
+            time.sleep(random.uniform(0.3, 0.5))
 
             try:
                 if platform.system() == 'Linux':
@@ -1039,7 +1010,7 @@ class MacroGUI:
                 self.log(f"[{command_type}] Enter key error: {e}", "error")
                 try:
                     pyautogui.press('enter')
-                except:
+                except Exception:
                     pass
 
             time.sleep(0.2)
@@ -1050,6 +1021,7 @@ class MacroGUI:
                 self.lifetime_stats[command_type] += 1
             if command_type in self.stats:
                 self.stats[command_type] += 1
+            # Save after each command to persist running stats
             self.save_settings()
             return True
         except Exception as e:
@@ -1062,34 +1034,15 @@ class MacroGUI:
         self.log("[owobuy] Thread started", "info")
         while self.running and not self.stop_event.is_set():
             try:
-                while self.running and not self.wait_if_paused():
-                    time.sleep(0.1)
-                    if self.stop_event.is_set():
-                        break
-                if not self.running or self.stop_event.is_set():
+                if not self._wait_for_ready("owobuy"):
                     break
-                if not self.is_correct_window_active():
-                    self.log("[owobuy] Target window not active; waiting...", "warning")
-                    while self.running and not self.stop_event.is_set() and not self.is_correct_window_active():
-                        time.sleep(0.5)
-                    continue
-                if self.detect_antibot():
-                    with self.pause_lock:
-                        self.paused = True
+                if not self.send_command("owo buy 1", "owobuy"):
                     time.sleep(1)
                     continue
-                if self.send_command("owo buy 1", "owobuy"):
-                    self.log("[owobuy] Sent: owo buy 1", "command")
-                else:
-                    time.sleep(1)
-                    continue
+                self.log("[owobuy] Sent: owo buy 1", "command")
                 delay = self.scheduler.humanize_delay(self.owobuy_cooldown.get())
                 self.log(f"[owobuy] Waiting {delay:.2f}s", "info")
-                wait_steps = int(delay * 10)
-                for step in range(wait_steps):
-                    if not self.running or self.stop_event.is_set():
-                        break
-                    time.sleep(0.1)
+                self._interruptible_sleep(delay)
             except Exception as e:
                 self.log(f"[owobuy] Error: {str(e)}", "error")
                 time.sleep(1)
@@ -1099,34 +1052,15 @@ class MacroGUI:
         self.log("[owo] Thread started", "info")
         while self.running and not self.stop_event.is_set():
             try:
-                while self.running and not self.wait_if_paused():
-                    time.sleep(0.1)
-                    if self.stop_event.is_set():
-                        break
-                if not self.running or self.stop_event.is_set():
+                if not self._wait_for_ready("owo"):
                     break
-                if not self.is_correct_window_active():
-                    self.log("[owo] Target window not active; waiting...", "warning")
-                    while self.running and not self.stop_event.is_set() and not self.is_correct_window_active():
-                        time.sleep(0.5)
-                    continue
-                if self.detect_antibot():
-                    with self.pause_lock:
-                        self.paused = True
+                if not self.send_command("owo", "owo"):
                     time.sleep(1)
                     continue
-                if self.send_command("owo", "owo"):
-                    self.log("[owo] Sent: owo", "command")
-                else:
-                    time.sleep(1)
-                    continue
+                self.log("[owo] Sent: owo", "command")
                 delay = self.scheduler.humanize_delay(self.owo_cooldown.get())
                 self.log(f"[owo] Waiting {delay:.2f}s", "info")
-                wait_steps = int(delay * 10)
-                for step in range(wait_steps):
-                    if not self.running or self.stop_event.is_set():
-                        break
-                    time.sleep(0.1)
+                self._interruptible_sleep(delay)
             except Exception as e:
                 self.log(f"[owo] Error: {str(e)}", "error")
                 time.sleep(1)
@@ -1136,76 +1070,57 @@ class MacroGUI:
         self.log("[owoh-owob] Thread started", "info")
         while self.running and not self.stop_event.is_set():
             try:
-                while self.running and not self.wait_if_paused():
-                    time.sleep(0.1)
-                    if self.stop_event.is_set():
-                        break
-                if not self.running or self.stop_event.is_set():
+                if not self._wait_for_ready("owoh-owob"):
                     break
-                if not self.is_correct_window_active():
-                    self.log("[owoh-owob] Target window not active; waiting...", "warning")
-                    while self.running and not self.stop_event.is_set() and not self.is_correct_window_active():
-                        time.sleep(0.5)
-                    continue
-                if self.detect_antibot():
-                    with self.pause_lock:
-                        self.paused = True
-                    time.sleep(1)
-                    continue
                 cmd1 = "/hunt" if self.use_slash_hunt_battle.get() else "owoh"
-                if self.send_command(cmd1, "owoh"):
-                    self.log(f"[owoh-owob] Sent: {cmd1}", "command")
-                else:
+                if not self.send_command(cmd1, "owoh"):
                     time.sleep(1)
                     continue
-                pair_gap = random.uniform(0.8, 1.5)
-                time.sleep(pair_gap)
+                self.log(f"[owoh-owob] Sent: {cmd1}", "command")
+
+                time.sleep(random.uniform(0.8, 1.5))
+
                 cmd2 = "/battle" if self.use_slash_hunt_battle.get() else "owob"
-                if self.send_command(cmd2, "owob"):
-                    self.log(f"[owoh-owob] Sent: {cmd2}", "command")
-                else:
+                if not self.send_command(cmd2, "owob"):
                     time.sleep(1)
                     continue
+                self.log(f"[owoh-owob] Sent: {cmd2}", "command")
+
                 delay = self.scheduler.humanize_delay(self.owoh_owob_cooldown.get())
                 self.log(f"[owoh-owob] Waiting {delay:.2f}s", "info")
-                wait_steps = int(delay * 10)
-                for step in range(wait_steps):
-                    if not self.running or self.stop_event.is_set():
-                        break
-                    time.sleep(0.1)
+                self._interruptible_sleep(delay)
             except Exception as e:
                 self.log(f"[owoh-owob] Error: {str(e)}", "error")
                 time.sleep(1)
         self.log("[owoh-owob] Thread stopped", "info")
 
-    SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
-
     def load_settings(self):
-        if os.path.exists(self.SETTINGS_FILE):
-            try:
-                with open(self.SETTINGS_FILE, "r") as f:
-                    data = json.load(f)
-                self.owobuy_cooldown.set(max(1.0, min(30.0, data.get("owobuy_cooldown", 5.0))))
-                self.owo_cooldown.set(max(1.0, min(60.0, data.get("owo_cooldown", 10.0))))
-                self.owoh_owob_cooldown.set(max(1.0, min(60.0, data.get("owoh_owob_cooldown", 15.0))))
-                self.random_enabled.set(bool(data.get("random_enabled", True)))
-                self.owobuy_enabled.set(bool(data.get("owobuy_enabled", True)))
-                self.owo_enabled.set(bool(data.get("owo_enabled", True)))
-                self.use_slash_hunt_battle.set(bool(data.get("use_slash_hunt_battle", False)))
-                self.command_variance.set(float(data.get("command_variance", 0.15)))
-                self.typing_delay_min.set(float(data.get("typing_delay_min", 0.01)))
-                self.typing_delay_max.set(float(data.get("typing_delay_max", 0.05)))
-                self.typing_pause_min.set(float(data.get("typing_pause_min", 0.2)))
-                self.typing_pause_max.set(float(data.get("typing_pause_max", 0.5)))
-                self.window_name.set(str(data.get("window_name", "Discord")))
-                if "image_path" in data and os.path.exists(data["image_path"]):
-                    self.image_path = data["image_path"]
-                if "lifetime_stats" in data:
-                    for key in self.lifetime_stats.keys():
-                        self.lifetime_stats[key] = max(0, int(data["lifetime_stats"].get(key, 0)))
-                self.log("Settings loaded successfully", "info")
-            except Exception as e:
-                self.log(f"Failed to load settings: {e}", "warning")
+        if not os.path.exists(self.SETTINGS_FILE):
+            return
+        try:
+            with open(self.SETTINGS_FILE, "r") as f:
+                data = json.load(f)
+            self.owobuy_cooldown.set(max(1.0, min(30.0, data.get("owobuy_cooldown", 5.0))))
+            self.owo_cooldown.set(max(1.0, min(60.0, data.get("owo_cooldown", 10.0))))
+            self.owoh_owob_cooldown.set(max(1.0, min(60.0, data.get("owoh_owob_cooldown", 15.0))))
+            self.random_enabled.set(bool(data.get("random_enabled", True)))
+            self.owobuy_enabled.set(bool(data.get("owobuy_enabled", True)))
+            self.owo_enabled.set(bool(data.get("owo_enabled", True)))
+            self.use_slash_hunt_battle.set(bool(data.get("use_slash_hunt_battle", False)))
+            self.command_variance.set(float(data.get("command_variance", 0.15)))
+            self.typing_delay_min.set(float(data.get("typing_delay_min", 0.01)))
+            self.typing_delay_max.set(float(data.get("typing_delay_max", 0.05)))
+            self.typing_pause_min.set(float(data.get("typing_pause_min", 0.2)))
+            self.typing_pause_max.set(float(data.get("typing_pause_max", 0.5)))
+            self.window_name.set(str(data.get("window_name", "Discord")))
+            if "image_path" in data and os.path.exists(data["image_path"]):
+                self.image_path = data["image_path"]
+            if "lifetime_stats" in data:
+                for key in self.lifetime_stats:
+                    self.lifetime_stats[key] = max(0, int(data["lifetime_stats"].get(key, 0)))
+            self.log("Settings loaded successfully", "info")
+        except Exception as e:
+            self.log(f"Failed to load settings: {e}", "warning")
 
     def save_settings(self):
         data = {
@@ -1226,7 +1141,9 @@ class MacroGUI:
             "lifetime_stats": self.lifetime_stats
         }
         try:
-            os.makedirs(os.path.dirname(self.SETTINGS_FILE), exist_ok=True)
+            settings_dir = os.path.dirname(self.SETTINGS_FILE)
+            if settings_dir:
+                os.makedirs(settings_dir, exist_ok=True)
             temp_file = self.SETTINGS_FILE + ".tmp"
             with open(temp_file, "w") as f:
                 json.dump(data, f, indent=2)
@@ -1240,6 +1157,7 @@ class MacroGUI:
         self.save_settings()
         self.root.destroy()
 
+
 def main():
     try:
         root = tk.Tk()
@@ -1249,6 +1167,7 @@ def main():
     except Exception as e:
         app_log(f"Fatal error: {e}", "error")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     app_log("=== Starting OwO Bot Macro ===", "info")
